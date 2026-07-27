@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Water Express - Kelola Order</title>
+<meta name="description" content="Aplikasi kelola order galon, invoice, dan surat jalan Water Express">
+<meta name="theme-color" content="#0B4F9E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ===================== APP SHELL ===================== -->
+<div class="app">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark">W</div>
+      <div class="brand-text">
+        <span class="brand-name">Water Express</span>
+        <span class="brand-sub">Kelola Order Galon</span>
+      </div>
+    </div>
+    <button class="icon-btn" id="btn-menu" aria-label="Menu pengaturan">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="19" r="1.8" fill="currentColor"/></svg>
+    </button>
+  </header>
+
+  <!-- Main views -->
+  <main class="app-main" id="app-main">
+
+    <!-- ============ VIEW: INPUT HARIAN ============ -->
+    <section class="view" id="view-input">
+      <div class="view-head">
+        <h1>Input Kiriman</h1>
+        <p class="view-sub">Catat kiriman galon hari ini</p>
+      </div>
+
+      <div class="card summary-strip" id="today-summary">
+        <!-- filled by JS -->
+      </div>
+
+      <form class="card form-card" id="form-input">
+        <div class="field">
+          <label for="inp-tanggal">Tanggal</label>
+          <input type="date" id="inp-tanggal" required>
+        </div>
+
+        <div class="field">
+          <label for="inp-karyawan">Karyawan Pengirim</label>
+          <div class="input-row">
+            <select id="inp-karyawan" required></select>
+            <button type="button" class="mini-btn" data-action="add-karyawan">+ Baru</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="inp-kontraktor">Kontraktor Utama</label>
+          <div class="input-row">
+            <select id="inp-kontraktor" required></select>
+            <button type="button" class="mini-btn" data-action="add-kontraktor">+ Baru</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="inp-pt">Dikirim ke (Subcon / Warung)</label>
+          <div class="input-row">
+            <select id="inp-pt" required></select>
+            <button type="button" class="mini-btn" data-action="add-pt">+ Baru</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="inp-produk">Jenis Produk</label>
+          <div class="input-row">
+            <select id="inp-produk" required></select>
+            <button type="button" class="mini-btn" data-action="add-produk">+ Baru</button>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="inp-jumlah">Jumlah</label>
+            <input type="number" id="inp-jumlah" min="1" step="1" placeholder="0" required>
+          </div>
+          <div class="field">
+            <label for="inp-harga">Harga Satuan (Rp)</label>
+            <input type="number" id="inp-harga" min="0" step="500" placeholder="0" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="inp-catatan">Catatan (opsional)</label>
+          <input type="text" id="inp-catatan" placeholder="Contoh: isi ulang, ganti galon rusak, dll">
+        </div>
+
+        <div class="subtotal-preview" id="subtotal-preview">Subtotal: Rp 0</div>
+
+        <button type="submit" class="btn-primary btn-full">Simpan Kiriman</button>
+      </form>
+
+      <div class="list-head">
+        <h2>Kiriman Hari Ini</h2>
+      </div>
+      <div class="entry-list" id="today-list"></div>
+    </section>
+
+    <!-- ============ VIEW: REKAP ============ -->
+    <section class="view" id="view-rekap" hidden>
+      <div class="view-head">
+        <h1>Rekap Berjalan</h1>
+        <p class="view-sub">Total sejak tutup buku terakhir</p>
+      </div>
+
+      <div class="card filter-card">
+        <label for="rekap-kontraktor-filter">Filter Kontraktor</label>
+        <select id="rekap-kontraktor-filter">
+          <option value="">Semua Kontraktor</option>
+        </select>
+      </div>
+
+      <div class="rekap-groups" id="rekap-groups"></div>
+
+      <div class="card total-card" id="rekap-grand-total"></div>
+    </section>
+
+    <!-- ============ VIEW: INVOICE ============ -->
+    <section class="view" id="view-invoice" hidden>
+      <div class="view-head">
+        <h1>Invoice</h1>
+        <p class="view-sub">Terbitkan invoice &amp; tutup buku per PT</p>
+      </div>
+
+      <div class="card" id="invoice-selector-card">
+        <label for="invoice-pt-select">Pilih PT / Tujuan</label>
+        <select id="invoice-pt-select"></select>
+        <div class="invoice-preview" id="invoice-preview"></div>
+        <div class="btn-row">
+          <button class="btn-secondary" id="btn-preview-invoice">Lihat Rincian</button>
+          <button class="btn-primary" id="btn-terbitkan-invoice">Terbitkan Invoice (PDF)</button>
+        </div>
+        <p class="hint-text">Menerbitkan invoice akan menutup buku untuk PT ini — rekap berjalan akan direset dan dipindah ke riwayat.</p>
+      </div>
+
+      <div class="list-head"><h2>Riwayat Invoice</h2></div>
+      <div class="entry-list" id="invoice-history"></div>
+    </section>
+
+    <!-- ============ VIEW: PENGELUARAN ============ -->
+    <section class="view" id="view-pengeluaran" hidden>
+      <div class="view-head">
+        <h1>Pengeluaran</h1>
+        <p class="view-sub">Bayar karyawan &amp; biaya transport</p>
+      </div>
+
+      <div class="card summary-strip" id="pengeluaran-summary"></div>
+
+      <form class="card form-card" id="form-pengeluaran">
+        <div class="field">
+          <label for="peng-tanggal">Tanggal</label>
+          <input type="date" id="peng-tanggal" required>
+        </div>
+        <div class="field">
+          <label for="peng-jenis">Jenis Pengeluaran</label>
+          <select id="peng-jenis" required>
+            <option value="Bayar Karyawan">Bayar Karyawan</option>
+            <option value="Biaya Transport">Biaya Transport</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+        <div class="field" id="peng-karyawan-field">
+          <label for="peng-karyawan">Karyawan</label>
+          <select id="peng-karyawan"></select>
+        </div>
+        <div class="field">
+          <label for="peng-jumlah">Jumlah (Rp)</label>
+          <input type="number" id="peng-jumlah" min="0" step="1000" placeholder="0" required>
+        </div>
+        <div class="field">
+          <label for="peng-keterangan">Keterangan</label>
+          <input type="text" id="peng-keterangan" placeholder="Contoh: gaji mingguan, bensin antar galon">
+        </div>
+        <button type="submit" class="btn-primary btn-full">Simpan Pengeluaran</button>
+      </form>
+
+      <div class="list-head"><h2>Riwayat Pengeluaran</h2></div>
+      <div class="entry-list" id="pengeluaran-list"></div>
+    </section>
+
+    <!-- ============ VIEW: SURAT JALAN ============ -->
+    <section class="view" id="view-suratjalan" hidden>
+      <div class="view-head">
+        <h1>Surat Jalan</h1>
+        <p class="view-sub">Terbitkan surat jalan untuk kiriman</p>
+      </div>
+
+      <form class="card form-card" id="form-suratjalan">
+        <div class="field">
+          <label for="sj-tanggal">Tanggal Kirim</label>
+          <input type="date" id="sj-tanggal" required>
+        </div>
+        <div class="field">
+          <label for="sj-karyawan">Karyawan Pengantar</label>
+          <select id="sj-karyawan" required></select>
+        </div>
+        <div class="field">
+          <label for="sj-pt">Tujuan (PT / Warung)</label>
+          <select id="sj-pt" required></select>
+        </div>
+
+        <div class="field">
+          <label>Daftar Produk Dikirim</label>
+          <div id="sj-item-list" class="sj-item-list"></div>
+          <button type="button" class="mini-btn" id="btn-sj-add-item">+ Tambah Produk</button>
+        </div>
+
+        <div class="field">
+          <label for="sj-catatan">Catatan</label>
+          <textarea id="sj-catatan" rows="2" placeholder="Contoh: galon kosong diambil 5, dll"></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-sj-print">Cetak Langsung</button>
+          <button type="submit" class="btn-primary">Unduh PDF</button>
+        </div>
+      </form>
+
+      <div class="list-head"><h2>Riwayat Surat Jalan</h2></div>
+      <div class="entry-list" id="suratjalan-list"></div>
+    </section>
+
+  </main>
+
+  <!-- Bottom navigation -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="nav-btn active" data-view="input">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 4v16m8-8H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Input</span>
+    </button>
+    <button class="nav-btn" data-view="rekap">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="4" height="10" rx="1" stroke="currentColor" stroke-width="2"/><rect x="10" y="6" width="4" height="14" rx="1" stroke="currentColor" stroke-width="2"/><rect x="16" y="13" width="4" height="7" rx="1" stroke="currentColor" stroke-width="2"/></svg>
+      <span>Rekap</span>
+    </button>
+    <button class="nav-btn" data-view="invoice">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M6 3h9l3 3v15H6V3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Invoice</span>
+    </button>
+    <button class="nav-btn" data-view="pengeluaran">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v10M9 9.5c0-1.4 1.3-2.5 3-2.5s3 .9 3 2c0 3-6 1.5-6 4.5 0 1.1 1.3 2 3 2s3-1.1 3-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Kas</span>
+    </button>
+    <button class="nav-btn" data-view="suratjalan">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h13l3 4v12H4V4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 11h7M7 15h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Sr. Jalan</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ===================== MODALS ===================== -->
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+
+  <div class="modal" id="modal-menu" hidden>
+    <div class="modal-head"><h3>Pengaturan</h3><button class="modal-close" data-close>&times;</button></div>
+    <div class="modal-body">
+      <button class="menu-item" data-action="open-master">Kelola PT, Produk &amp; Karyawan</button>
+      <button class="menu-item" data-action="export-backup">Unduh Cadangan Data (.json)</button>
+      <button class="menu-item" data-action="import-backup">Pulihkan dari Cadangan</button>
+      <input type="file" id="import-file-input" accept="application/json" hidden>
+      <button class="menu-item danger" data-action="reset-all">Hapus Semua Data</button>
+      <div class="menu-footer">Water Express App &middot; Data tersimpan di perangkat ini</div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-master" hidden>
+    <div class="modal-head"><h3>Kelola Data Master</h3><button class="modal-close" data-close>&times;</button></div>
+    <div class="modal-body">
+      <div class="master-tabs">
+        <button class="master-tab active" data-mtab="kontraktor">Kontraktor</button>
+        <button class="master-tab" data-mtab="pt">Subcon/Warung</button>
+        <button class="master-tab" data-mtab="produk">Produk</button>
+        <button class="master-tab" data-mtab="karyawan">Karyawan</button>
+      </div>
+      <div class="master-panel" id="master-panel"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-generic" hidden>
+    <div class="modal-head"><h3 id="modal-generic-title">Tambah</h3><button class="modal-close" data-close>&times;</button></div>
+    <div class="modal-body" id="modal-generic-body"></div>
+  </div>
+
+  <div class="modal modal-large" id="modal-invoice-preview" hidden>
+    <div class="modal-head"><h3>Rincian Invoice</h3><button class="modal-close" data-close>&times;</button></div>
+    <div class="modal-body" id="modal-invoice-body"></div>
+  </div>
+
+</div>
+
+<script src="data.js"></script>
+<script src="pdf.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
